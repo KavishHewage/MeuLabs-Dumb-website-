@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitStack - Website Builder & GitHub Pages Deployment Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        
+        /* Custom Scrollbar for editor panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Device Frame Transitions */
+        .preview-container {
+            transition: all 0.3s ease-in-out;
+        }
+        .device-desktop { width: 100%; height: 100%; border-radius: 0px; }
+        .device-tablet { width: 768px; height: 90%; border-radius: 16px; border: 8px solid #334155; }
+        .device-mobile { width: 375px; height: 85%; border-radius: 24px; border: 8px solid #334155; }
+
+        /* Toast Animation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation Header -->
+    <header class="h-16 bg-slate-900/80 border-b border-slate-800 backdrop-blur-md px-4 flex items-center justify-between shrink-0 z-30">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <i class="fa-solid fa-cubes text-white text-lg"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="font-bold text-slate-100 text-lg leading-none">GitStack</h1>
+                    <span class="px-2 py-0.5 text-[10px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full">v2.4</span>
+                </div>
+                <p class="text-xs text-slate-400">Site Builder & GitHub Pages Deployer</p>
+            </div>
+        </div>
+
+        <!-- Central View Controls -->
+        <div class="hidden md:flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button id="viewPreviewBtn" onclick="switchMainView('preview')" class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 bg-indigo-600 text-white shadow-md">
+                <i class="fa-solid fa-eye"></i>
+                <span>Live Preview</span>
+            </button>
+            <button id="viewCodeBtn" onclick="switchMainView('code')" class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-code"></i>
+                <span>Export Code</span>
+            </button>
+            <button id="viewGuideBtn" onclick="switchMainView('guide')" class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center space-x-2">
+                <i class="fa-brands fa-github"></i>
+                <span>Deployment Guide</span>
+            </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+            <button onclick="copyGeneratedCode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition">
+                <i class="fa-regular fa-copy text-indigo-400"></i>
+                <span class="hidden sm:inline">Copy HTML</span>
+            </button>
+            <button onclick="downloadCodeFile()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-indigo-600/30 transition">
+                <i class="fa-solid fa-download"></i>
+                <span>Download index.html</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Controls / Customizer -->
+        <aside class="w-full md:w-[420px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-20 overflow-hidden">
+            
+            <!-- Sidebar Tab Navigation -->
+            <div class="flex border-b border-slate-800 bg-slate-950/50 p-1.5 overflow-x-auto space-x-1 shrink-0 no-scrollbar">
+                <button onclick="switchTab('template')" id="tab-btn-template" class="tab-btn active px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white flex items-center space-x-2 shrink-0 transition bg-slate-800 text-white">
+                    <i class="fa-solid fa-palette text-indigo-400"></i>
+                    <span>Template</span>
+                </button>
+                <button onclick="switchTab('profile')" id="tab-btn-profile" class="tab-btn px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white flex items-center space-x-2 shrink-0 transition">
+                    <i class="fa-solid fa-user text-indigo-400"></i>
+                    <span>Profile</span>
+                </button>
+                <button onclick="switchTab('skills')" id="tab-btn-skills" class="tab-btn px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white flex items-center space-x-2 shrink-0 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+                    <span>Skills</span>
+                </button>
+                <button onclick="switchTab('projects')" id="tab-btn-projects" class="tab-btn px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white flex items-center space-x-2 shrink-0 transition">
+                    <i class="fa-solid fa-diagram-project text-indigo-400"></i>
+                    <span>Projects</span>
+                </button>
+                <button onclick="switchTab('experience')" id="tab-btn-experience" class="tab-btn px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white flex items-center space-x-2 shrink-0 transition">
+                    <i class="fa-solid fa-briefcase text-indigo-400"></i>
+                    <span>Timeline</span>
+                </button>
+                <button onclick="switchTab('socials')" id="tab-btn-socials" class="tab-btn px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white flex items-center space-x-2 shrink-0 transition">
+                    <i class="fa-solid fa-share-nodes text-indigo-400"></i>
+                    <span>Socials</span>
+                </button>
+            </div>
+
+            <!-- Tab Contents Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                
+                <!-- TAB 1: Template & Theme Controls -->
+                <div id="tab-template" class="tab-content space-y-6">
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">Choose Layout Template</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="setTemplate('portfolio')" id="tmpl-portfolio" class="template-card p-3 rounded-xl border-2 border-indigo-500 bg-slate-800/80 text-left hover:border-indigo-400 transition relative">
+                                <div class="w-full h-16 bg-slate-900 rounded-lg mb-2 flex items-center justify-center border border-slate-700/50 overflow-hidden">
+                                    <div class="w-full px-2 text-[8px] text-slate-400 space-y-1">
+                                        <div class="h-2 w-12 bg-indigo-500 rounded"></div>
+                                        <div class="h-1.5 w-20 bg-slate-700 rounded"></div>
+                                        <div class="grid grid-cols-2 gap-1 pt-1">
+                                            <div class="h-4 bg-slate-800 border border-slate-700 rounded"></div>
+                                            <div class="h-4 bg-slate-800 border border-slate-700 rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-xs font-bold text-slate-200">Modern Portfolio</div>
+                                <div class="text-[10px] text-slate-400">Developer & Designer hero showcase</div>
+                            </button>
+
+                            <button onclick="setTemplate('resume')" id="tmpl-resume" class="template-card p-3 rounded-xl border-2 border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition relative">
+                                <div class="w-full h-16 bg-slate-950 rounded-lg mb-2 flex items-center justify-center border border-slate-800 overflow-hidden p-2">
+                                    <div class="w-full text-[8px] space-y-1">
+                                        <div class="h-2 w-16 bg-slate-300 rounded"></div>
+                                        <div class="h-1 w-24 bg-slate-600 rounded"></div>
+                                        <div class="h-px bg-slate-800 my-1"></div>
+                                        <div class="h-1 w-20 bg-slate-500 rounded"></div>
+                                    </div>
+                                </div>
+                                <div class="text-xs font-bold text-slate-200">Minimal Resume/CV</div>
+                                <div class="text-[10px] text-slate-400">Structured professional curriculum</div>
+                            </button>
+
+                            <button onclick="setTemplate('product')" id="tmpl-product" class="template-card p-3 rounded-xl border-2 border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition relative">
+                                <div class="w-full h-16 bg-slate-950 rounded-lg mb-2 flex items-center justify-center border border-slate-800 overflow-hidden p-2">
+                                    <div class="w-full text-[8px] space-y-1 text-center flex flex-col items-center">
+                                        <div class="h-2 w-10 bg-emerald-500 rounded"></div>
+                                        <div class="h-1.5 w-16 bg-slate-600 rounded"></div>
+                                        <div class="h-3 w-12 bg-emerald-600 rounded-full mt-1"></div>
+                                    </div>
+                                </div>
+                                <div class="text-xs font-bold text-slate-200">Product Landing</div>
+                                <div class="text-[10px] text-slate-400">SaaS / App product landing page</div>
+                            </button>
+
+                            <button onclick="setTemplate('tech')" id="tmpl-tech" class="template-card p-3 rounded-xl border-2 border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition relative">
+                                <div class="w-full h-16 bg-slate-950 rounded-lg mb-2 flex items-center justify-center border border-slate-800 overflow-hidden p-2 font-mono">
+                                    <div class="w-full text-[7px] text-cyan-400 space-y-1">
+                                        <div>$ dev --init</div>
+                                        <div class="text-slate-500">&gt; loading stack...</div>
+                                        <div class="h-2 w-full bg-cyan-950 border border-cyan-800 rounded"></div>
+                                    </div>
+                                </div>
+                                <div class="text-xs font-bold text-slate-200">Tech Terminal</div>
+                                <div class="text-[10px] text-slate-400">Developer terminal style aesthetic</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Accent Color Picker -->
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">Accent Theme Color</label>
+                        <div class="grid grid-cols-6 gap-2">
+                            <button onclick="setAccentColor('indigo')" class="h-8 rounded-lg bg-indigo-600 hover:ring-2 ring-indigo-400 transition border border-indigo-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-indigo"></i></button>
+                            <button onclick="setAccentColor('emerald')" class="h-8 rounded-lg bg-emerald-600 hover:ring-2 ring-emerald-400 transition border border-emerald-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-emerald hidden"></i></button>
+                            <button onclick="setAccentColor('violet')" class="h-8 rounded-lg bg-violet-600 hover:ring-2 ring-violet-400 transition border border-violet-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-violet hidden"></i></button>
+                            <button onclick="setAccentColor('cyan')" class="h-8 rounded-lg bg-cyan-600 hover:ring-2 ring-cyan-400 transition border border-cyan-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-cyan hidden"></i></button>
+                            <button onclick="setAccentColor('rose')" class="h-8 rounded-lg bg-rose-600 hover:ring-2 ring-rose-400 transition border border-rose-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-rose hidden"></i></button>
+                            <button onclick="setAccentColor('amber')" class="h-8 rounded-lg bg-amber-600 hover:ring-2 ring-amber-400 transition border border-amber-400/30 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-check check-amber hidden"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Theme Mode -->
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">Base Color Theme</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="setThemeMode('dark')" id="theme-dark-btn" class="p-3 rounded-xl border-2 border-indigo-500 bg-slate-800 text-slate-100 flex items-center justify-center space-x-2 text-xs font-medium">
+                                <i class="fa-solid fa-moon text-indigo-400"></i>
+                                <span>Dark Mode</span>
+                            </button>
+                            <button onclick="setThemeMode('light')" id="theme-light-btn" class="p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 flex items-center justify-center space-x-2 text-xs font-medium hover:border-slate-700">
+                                <i class="fa-solid fa-sun text-amber-400"></i>
+                                <span>Light Mode</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: Profile & Bio -->
+                <div id="tab-profile" class="tab-content hidden space-y-4">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1">Full Name / Display Title</label>
+                        <input type="text" id="input-name" value="Alex Rivera" oninput="updateState('profile', 'name', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1">Professional Title / Subtitle</label>
+                        <input type="text" id="input-title" value="Full-Stack Developer & UI Architect" oninput="updateState('profile', 'title', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1">Bio / Overview</label>
+                        <textarea id="input-bio" rows="3" oninput="updateState('profile', 'bio', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">Passionate about building performant web applications, elegant developer tools, and accessible user experiences with modern web technologies.</textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 block mb-1">Location</label>
+                            <input type="text" id="input-location" value="San Francisco, CA" oninput="updateState('profile', 'location', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium text-slate-300 block mb-1">Contact Email</label>
+                            <input type="email" id="input-email" value="alex@example.com" oninput="updateState('profile', 'email', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1">Avatar / Image URL</label>
+                        <input type="text" id="input-avatar" value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80" oninput="updateState('profile', 'avatar', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- TAB 3: Skills Management -->
+                <div id="tab-skills" class="tab-content hidden space-y-4">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1">Add Skill Tag</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="new-skill-input" placeholder="e.g., TypeScript, Node.js" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <button onclick="addSkill()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium">Add</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-2">Active Skills</label>
+                        <div id="skills-list" class="flex flex-wrap gap-2">
+                            <!-- Skill tags rendered dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: Dynamic Projects -->
+                <div id="tab-projects" class="tab-content hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Featured Projects</span>
+                        <button onclick="addProject()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Project</span>
+                        </button>
+                    </div>
+
+                    <div id="projects-container" class="space-y-4">
+                        <!-- Project Cards Dynamic Render -->
+                    </div>
+                </div>
+
+                <!-- TAB 5: Experience Timeline -->
+                <div id="tab-experience" class="tab-content hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Career History</span>
+                        <button onclick="addExperience()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Item</span>
+                        </button>
+                    </div>
+
+                    <div id="experience-container" class="space-y-4">
+                        <!-- Experience Items Dynamic Render -->
+                    </div>
+                </div>
+
+                <!-- TAB 6: Social Links -->
+                <div id="tab-socials" class="tab-content hidden space-y-4">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1"><i class="fa-brands fa-github text-slate-400 mr-1.5"></i> GitHub Username</label>
+                        <input type="text" id="social-github" value="alexrivera" oninput="updateState('socials', 'github', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1"><i class="fa-brands fa-linkedin text-blue-400 mr-1.5"></i> LinkedIn Profile URL</label>
+                        <input type="text" id="social-linkedin" value="https://linkedin.com/in/alexrivera" oninput="updateState('socials', 'linkedin', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1"><i class="fa-brands fa-x-twitter text-slate-400 mr-1.5"></i> Twitter/X Handle</label>
+                        <input type="text" id="social-twitter" value="@alexrivera_dev" oninput="updateState('socials', 'twitter', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300 block mb-1"><i class="fa-solid fa-globe text-emerald-400 mr-1.5"></i> Personal Website / Blog</label>
+                        <input type="text" id="social-website" value="https://alexrivera.dev" oninput="updateState('socials', 'website', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Branding in Sidebar -->
+            <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Instant Live Sync Enabled</span>
+                <span class="flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>Ready</span></span>
+            </div>
+        </aside>
+
+        <!-- Right Main Viewport Area -->
+        <main class="flex-1 bg-slate-950 flex flex-col min-w-0 relative overflow-hidden">
+            
+            <!-- Viewport Bar (For Preview Mode) -->
+            <div id="previewToolbar" class="h-10 bg-slate-900/60 border-b border-slate-800/80 px-4 flex items-center justify-between text-xs text-slate-400 shrink-0">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+                    <span class="ml-2 font-mono text-[11px] text-slate-500 hidden sm:inline">index.html - Live Viewport</span>
+                </div>
+
+                <!-- Device Viewport Switcher -->
+                <div class="flex items-center space-x-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
+                    <button onclick="setDeviceViewport('desktop')" id="device-desktop-btn" title="Desktop View" class="p-1 px-2 rounded text-indigo-400 bg-slate-800 hover:text-white transition">
+                        <i class="fa-solid fa-desktop"></i>
+                    </button>
+                    <button onclick="setDeviceViewport('tablet')" id="device-tablet-btn" title="Tablet View" class="p-1 px-2 rounded text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-tablet-screen-button"></i>
+                    </button>
+                    <button onclick="setDeviceViewport('mobile')" id="device-mobile-btn" title="Mobile View" class="p-1 px-2 rounded text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 1: Live Interactive Iframe Preview -->
+            <div id="mainViewPreview" class="flex-1 bg-slate-950 flex items-center justify-center p-0 md:p-4 overflow-auto">
+                <div id="previewWrapper" class="preview-container device-desktop bg-white overflow-hidden shadow-2xl relative">
+                    <iframe id="sitePreviewIframe" class="w-full h-full border-0" title="Live Preview"></iframe>
+                </div>
+            </div>
+
+            <!-- VIEW 2: Raw Code Viewer -->
+            <div id="mainViewCode" class="flex-1 bg-slate-950 hidden flex-col overflow-hidden">
+                <div class="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 flex items-center">
+                        <i class="fa-solid fa-file-code text-indigo-400 mr-2"></i>
+                        Generated Standalone HTML File
+                    </span>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="copyGeneratedCode()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">
+                            <i class="fa-regular fa-copy mr-1"></i> Copy
+                        </button>
+                        <button onclick="downloadCodeFile()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs">
+                            <i class="fa-solid fa-download mr-1"></i> Download
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 p-4 overflow-auto font-mono text-xs text-slate-300 leading-relaxed bg-slate-950 select-all">
+                    <pre><code id="codeViewerBlock"></code></pre>
+                </div>
+            </div>
+
+            <!-- VIEW 3: GitHub Pages Deployment Wizard -->
+            <div id="mainViewGuide" class="flex-1 bg-slate-950 hidden overflow-y-auto p-4 md:p-8">
+                <div class="max-w-4xl mx-auto space-y-8">
+                    
+                    <!-- Hero Header for Guide -->
+                    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 md:p-8 rounded-2xl border border-indigo-500/20 relative overflow-hidden shadow-xl">
+                        <div class="absolute right-0 top-0 opacity-10 text-9xl font-bold font-mono text-white select-none pointer-events-none">GH</div>
+                        <div class="relative z-10 space-y-2">
+                            <span class="px-2.5 py-1 text-[11px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full inline-block">Interactive Deployment Assistant</span>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-white">Deploy to GitHub Pages in Minutes</h2>
+                            <p class="text-slate-300 text-xs md:text-sm max-w-xl">
+                                Custom step-by-step instructions generated for your GitHub repository. Follow these simple steps to host your website online for free.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Repository Configuration Form -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-sliders text-indigo-400 mr-2"></i>
+                            Step 1: Configure Repository Parameters
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-slate-300 block mb-1">GitHub Username</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-500 text-xs font-mono">github.com/</span>
+                                    <input type="text" id="gh-user-input" value="alexrivera" oninput="updateGHParam('user', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-24 pr-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-300 block mb-1">Repository Name</label>
+                                <input type="text" id="gh-repo-input" value="my-portfolio" oninput="updateGHParam('repo', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Expected Live URL Output -->
+                        <div class="mt-4 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center space-x-2 text-xs">
+                                <i class="fa-solid fa-globe text-emerald-400 text-base"></i>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px]">Target Published URL:</span>
+                                    <a id="gh-live-url" href="#" target="_blank" class="text-indigo-300 font-mono font-bold hover:underline">https://alexrivera.github.io/my-portfolio/</a>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold rounded">Free SSL Included</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Method Selector -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-route text-indigo-400 mr-2"></i>
+                            Step 2: Choose Deployment Method
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button onclick="setGHMethod('cli')" id="gh-method-cli-btn" class="p-4 rounded-xl border-2 border-indigo-500 bg-slate-900 text-left hover:border-indigo-400 transition">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold text-white flex items-center"><i class="fa-solid fa-terminal text-indigo-400 mr-2"></i> Option A: Git Command Line (CLI)</span>
+                                    <span class="px-2 py-0.5 text-[9px] bg-indigo-500/20 text-indigo-300 rounded font-semibold">Recommended</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Best for developers who use Terminal/Git CLI on local machine.</p>
+                            </button>
+
+                            <button onclick="setGHMethod('web')" id="gh-method-web-btn" class="p-4 rounded-xl border border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold text-white flex items-center"><i class="fa-solid fa-cloud-arrow-up text-emerald-400 mr-2"></i> Option B: GitHub Web UI Drag & Drop</span>
+                                    <span class="px-2 py-0.5 text-[9px] bg-slate-800 text-slate-400 rounded font-semibold">No Code Needed</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Upload your exported index.html directly via browser browser tabs.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Interactive Dynamic Instructions -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                        
+                        <!-- CLI Method Section -->
+                        <div id="gh-guide-cli" class="space-y-6">
+                            <div class="space-y-2">
+                                <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">1. Initialize & Commit Local Code</h4>
+                                <p class="text-xs text-slate-400">Open your terminal in the folder where you saved <code class="text-indigo-300 bg-slate-950 px-1 py-0.5 rounded">index.html</code>:</p>
+                                <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs text-indigo-300 relative group">
+                                    <button onclick="copySnippet('cmd-block-1')" class="absolute right-3 top-3 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition">Copy</button>
+                                    <pre id="cmd-block-1">git init
+git add index.html
+git commit -m "Initial deploy with GitStack"</pre>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">2. Link to Remote GitHub Repository</h4>
+                                <p class="text-xs text-slate-400">Create a new empty repository on GitHub named <code class="gh-repo-display text-indigo-300 bg-slate-950 px-1 py-0.5 rounded">my-portfolio</code>, then run:</p>
+                                <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs text-indigo-300 relative group">
+                                    <button onclick="copySnippet('cmd-block-2')" class="absolute right-3 top-3 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition">Copy</button>
+                                    <pre id="cmd-block-2">git branch -M main
+git remote add origin https://github.com/<span class="gh-user-display">alexrivera</span>/<span class="gh-repo-display">my-portfolio</span>.git
+git push -u origin main</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Web Upload Method Section -->
+                        <div id="gh-guide-web" class="space-y-6 hidden">
+                            <ol class="space-y-4 text-xs text-slate-300 list-decimal pl-4">
+                                <li>Download your website code using the <strong class="text-white">Download index.html</strong> button above.</li>
+                                <li>Navigate to <a href="https://github.com/new" target="_blank" class="text-indigo-400 hover:underline font-mono">github.com/new</a> and create a new repository named <code class="gh-repo-display text-indigo-300 bg-slate-950 px-1 py-0.5 rounded">my-portfolio</code>.</li>
+                                <li>Click on the <strong class="text-white">"uploading an existing file"</strong> link in the main repository screen.</li>
+                                <li>Drag and drop your <code class="text-indigo-300 bg-slate-950 px-1 py-0.5 rounded">index.html</code> file into the file upload zone.</li>
+                                <li>Click the green <strong class="text-white">"Commit changes"</strong> button at the bottom.</li>
+                            </ol>
+                        </div>
+
+                        <!-- Common Step: GitHub Pages Activation -->
+                        <div class="pt-4 border-t border-slate-800 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-toggle-on text-emerald-400 mr-2"></i>
+                                Final Step: Enable GitHub Pages in Repo Settings
+                            </h4>
+                            <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-3 text-xs text-slate-300">
+                                <div class="flex items-start space-x-3">
+                                    <span class="w-5 h-5 rounded-full bg-indigo-600/30 text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+                                    <span>Go to your repository on GitHub: <a id="gh-repo-url" href="https://github.com/alexrivera/my-portfolio" target="_blank" class="text-indigo-400 hover:underline font-mono">github.com/alexrivera/my-portfolio</a></span>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <span class="w-5 h-5 rounded-full bg-indigo-600/30 text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+                                    <span>Click on <strong class="text-white">Settings</strong> &gt; <strong class="text-white">Pages</strong> in the left sidebar menu.</span>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <span class="w-5 h-5 rounded-full bg-indigo-600/30 text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
+                                    <span>Under <strong class="text-white">Build and deployment</strong> &gt; <strong class="text-white">Branch</strong>, select <code class="text-indigo-300 bg-slate-900 px-1 py-0.5 rounded">main</code> and folder <code class="text-indigo-300 bg-slate-900 px-1 py-0.5 rounded">/ (root)</code>, then click <strong class="text-white">Save</strong>.</span>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <span class="w-5 h-5 rounded-full bg-emerald-600/30 text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"><i class="fa-solid fa-check text-[10px]"></i></span>
+                                    <span>Wait 60 seconds! Your live URL will be active at <a id="gh-live-url-2" href="#" target="_blank" class="text-emerald-400 font-bold hover:underline font-mono">https://alexrivera.github.io/my-portfolio/</a></span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-6 right-6 hidden z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-xs font-semibold toast-animate border border-indigo-400/40">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <span id="toast-msg">Action completed successfully!</span>
+    </div>
+
+    <script>
+        // State Store
+        const state = {
+            template: 'portfolio', // portfolio | resume | product | tech
+            accentColor: 'indigo', // indigo | emerald | violet | cyan | rose | amber
+            themeMode: 'dark', // dark | light
+            profile: {
+                name: 'Alex Rivera',
+                title: 'Full-Stack Developer & UI Architect',
+                bio: 'Passionate about building performant web applications, elegant developer tools, and accessible user experiences with modern web technologies.',
+                location: 'San Francisco, CA',
+                email: 'alex@example.com',
+                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
+            },
+            skills: ['JavaScript', 'TypeScript', 'React', 'Tailwind CSS', 'Node.js', 'Python', 'Git', 'GraphQL'],
+            projects: [
+                {
+                    id: 1,
+                    title: 'CloudScale Dashboard',
+                    desc: 'Real-time analytics monitor for cloud architecture infrastructure with microservices metrics.',
+                    tags: 'React, Tailwind, Recharts',
+                    liveUrl: 'https://example.com',
+                    githubUrl: 'https://github.com',
+                    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&auto=format&fit=crop&q=80'
+                },
+                {
+                    id: 2,
+                    title: 'DevNexus AI Tool',
+                    desc: 'Automated code review and refactoring assistant powered by LLM integrations.',
+                    tags: 'TypeScript, OpenAI API, Node',
+                    liveUrl: 'https://example.com',
+                    githubUrl: 'https://github.com',
+                    imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500&auto=format&fit=crop&q=80'
+                }
+            ],
+            experience: [
+                {
+                    id: 1,
+                    role: 'Senior Frontend Engineer',
+                    company: 'Vercel / TechCorp',
+                    period: '2022 - Present',
+                    desc: 'Architecting modern UI component libraries, improving design system scalability and accessibility performance.'
+                },
+                {
+                    id: 2,
+                    role: 'Full-Stack Software Engineer',
+                    company: 'Acme Studio',
+                    period: '2020 - 2022',
+                    desc: 'Built high-throughput client dashboards and REST API services using React, TypeScript, and Express.'
+                }
+            ],
+            socials: {
+                github: 'alexrivera',
+                linkedin: 'https://linkedin.com/in/alexrivera',
+                twitter: '@alexrivera_dev',
+                website: 'https://alexrivera.dev'
+            },
+            github: {
+                username: 'alexrivera',
+                repoName: 'my-portfolio',
+                method: 'cli' // cli | web
+            }
+        };
+
+        const colorHexMap = {
+            indigo: { main: '#6366f1', textClass: 'text-indigo-400', bgClass: 'bg-indigo-600', gradient: 'from-indigo-600 to-violet-600' },
+            emerald: { main: '#10b981', textClass: 'text-emerald-400', bgClass: 'bg-emerald-600', gradient: 'from-emerald-600 to-teal-600' },
+            violet: { main: '#8b5cf6', textClass: 'text-violet-400', bgClass: 'bg-violet-600', gradient: 'from-violet-600 to-fuchsia-600' },
+            cyan: { main: '#06b6d4', textClass: 'text-cyan-400', bgClass: 'bg-cyan-600', gradient: 'from-cyan-600 to-blue-600' },
+            rose: { main: '#f43f5e', textClass: 'text-rose-400', bgClass: 'bg-rose-600', gradient: 'from-rose-600 to-pink-600' },
+            amber: { main: '#f59e0b', textClass: 'text-amber-400', bgClass: 'bg-amber-600', gradient: 'from-amber-600 to-orange-600' }
+        };
+
+        // Navigation Switcher
+        function switchMainView(view) {
+            const previewEl = document.getElementById('mainViewPreview');
+            const codeEl = document.getElementById('mainViewCode');
+            const guideEl = document.getElementById('mainViewGuide');
+            const previewToolbar = document.getElementById('previewToolbar');
+
+            const btnPreview = document.getElementById('viewPreviewBtn');
+            const btnCode = document.getElementById('viewCodeBtn');
+            const btnGuide = document.getElementById('viewGuideBtn');
+
+            // Reset buttons
+            [btnPreview, btnCode, btnGuide].forEach(btn => {
+                btn.className = "px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center space-x-2";
+            });
+
+            // Hide views
+            previewEl.classList.add('hidden');
+            codeEl.classList.add('hidden');
+            guideEl.classList.add('hidden');
+            previewToolbar.classList.add('hidden');
+
+            if (view === 'preview') {
+                previewEl.classList.remove('hidden');
+                previewToolbar.classList.remove('hidden');
+                btnPreview.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 bg-indigo-600 text-white shadow-md";
+            } else if (view === 'code') {
+                codeEl.classList.remove('hidden');
+                codeEl.classList.add('flex');
+                btnCode.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 bg-indigo-600 text-white shadow-md";
+            } else if (view === 'guide') {
+                guideEl.classList.remove('hidden');
+                btnGuide.className = "px-4 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 bg-indigo-600 text-white shadow-md";
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+            document.getElementById(`tab-btn-${tabId}`).classList.add('bg-slate-800', 'text-white');
+            document.getElementById(`tab-btn-${tabId}`).classList.remove('text-slate-400');
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+        }
+
+        // Viewport switcher
+        function setDeviceViewport(device) {
+            const wrapper = document.getElementById('previewWrapper');
+            wrapper.className = `preview-container device-${device} bg-white overflow-hidden shadow-2xl relative`;
+            
+            ['desktop', 'tablet', 'mobile'].forEach(d => {
+                const btn = document.getElementById(`device-${d}-btn`);
+                if (d === device) {
+                    btn.className = "p-1 px-2 rounded text-indigo-400 bg-slate-800 hover:text-white transition";
+                } else {
+                    btn.className = "p-1 px-2 rounded text-slate-400 hover:text-white transition";
+                }
+            });
+        }
+
+        // State updates
+        function updateState(category, key, value) {
+            if (category) {
+                state[category][key] = value;
+            }
+            renderApp();
+        }
+
+        function setTemplate(tmpl) {
+            state.template = tmpl;
+            document.querySelectorAll('.template-card').forEach(c => {
+                c.classList.remove('border-indigo-500', 'bg-slate-800/80');
+                c.classList.add('border-slate-800', 'bg-slate-900');
+            });
+            const activeCard = document.getElementById(`tmpl-${tmpl}`);
+            if (activeCard) {
+                activeCard.classList.remove('border-slate-800', 'bg-slate-900');
+                activeCard.classList.add('border-indigo-500', 'bg-slate-800/80');
+            }
+            renderApp();
+        }
+
+        function setAccentColor(color) {
+            state.accentColor = color;
+            Object.keys(colorHexMap).forEach(c => {
+                const check = document.querySelector(`.check-${c}`);
+                if (check) check.classList.add('hidden');
+            });
+            const currentCheck = document.querySelector(`.check-${color}`);
+            if (currentCheck) currentCheck.classList.remove('hidden');
+            renderApp();
+        }
+
+        function setThemeMode(mode) {
+            state.themeMode = mode;
+            const darkBtn = document.getElementById('theme-dark-btn');
+            const lightBtn = document.getElementById('theme-light-btn');
+
+            if (mode === 'dark') {
+                darkBtn.className = "p-3 rounded-xl border-2 border-indigo-500 bg-slate-800 text-slate-100 flex items-center justify-center space-x-2 text-xs font-medium";
+                lightBtn.className = "p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 flex items-center justify-center space-x-2 text-xs font-medium hover:border-slate-700";
+            } else {
+                lightBtn.className = "p-3 rounded-xl border-2 border-indigo-500 bg-slate-800 text-slate-100 flex items-center justify-center space-x-2 text-xs font-medium";
+                darkBtn.className = "p-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 flex items-center justify-center space-x-2 text-xs font-medium hover:border-slate-700";
+            }
+            renderApp();
+        }
+
+        // Skills logic
+        function addSkill() {
+            const input = document.getElementById('new-skill-input');
+            const val = input.value.trim();
+            if (val && !state.skills.includes(val)) {
+                state.skills.push(val);
+                input.value = '';
+                renderSkillsUI();
+                renderApp();
+            }
+        }
+
+        function removeSkill(index) {
+            state.skills.splice(index, 1);
+            renderSkillsUI();
+            renderApp();
+        }
+
+        function renderSkillsUI() {
+            const container = document.getElementById('skills-list');
+            container.innerHTML = state.skills.map((skill, idx) => `
+                <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-200 border border-slate-700">
+                    <span>${escapeHtml(skill)}</span>
+                    <button onclick="removeSkill(${idx})" class="text-slate-400 hover:text-rose-400 transition ml-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+
+        // Projects logic
+        function addProject() {
+            const newProj = {
+                id: Date.now(),
+                title: 'New Dynamic Project',
+                desc: 'Descriptive narrative of modern features, key architectural components, and solutions.',
+                tags: 'JavaScript, HTML, CSS',
+                liveUrl: 'https://example.com',
+                githubUrl: 'https://github.com',
+                imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&auto=format&fit=crop&q=80'
+            };
+            state.projects.push(newProj);
+            renderProjectsUI();
+            renderApp();
+        }
+
+        function removeProject(id) {
+            state.projects = state.projects.filter(p => p.id !== id);
+            renderProjectsUI();
+            renderApp();
+        }
+
+        function updateProjectField(id, field, value) {
+            const proj = state.projects.find(p => p.id === id);
+            if (proj) {
+                proj[field] = value;
+                renderApp();
+            }
+        }
+
+        function renderProjectsUI() {
+            const container = document.getElementById('projects-container');
+            container.innerHTML = state.projects.map(proj => `
+                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <input type="text" value="${escapeHtml(proj.title)}" oninput="updateProjectField(${proj.id}, 'title', this.value)" class="bg-transparent text-xs font-bold text-slate-200 focus:outline-none border-b border-transparent focus:border-indigo-500 flex-1 mr-2">
+                        <button onclick="removeProject(${proj.id})" class="text-slate-500 hover:text-rose-400 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <textarea rows="2" oninput="updateProjectField(${proj.id}, 'desc', this.value)" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-indigo-500">${escapeHtml(proj.desc)}</textarea>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" placeholder="Tags" value="${escapeHtml(proj.tags)}" oninput="updateProjectField(${proj.id}, 'tags', this.value)" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none">
+                        <input type="text" placeholder="Image URL" value="${escapeHtml(proj.imageUrl)}" oninput="updateProjectField(${proj.id}, 'imageUrl', this.value)" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Experience logic
+        function addExperience() {
+            const newExp = {
+                id: Date.now(),
+                role: 'Software Developer',
+                company: 'Tech Studio',
+                period: '2021 - 2023',
+                desc: 'Collaborated on frontend modules and backend API integrations.'
+            };
+            state.experience.push(newExp);
+            renderExperienceUI();
+            renderApp();
+        }
+
+        function removeExperience(id) {
+            state.experience = state.experience.filter(e => e.id !== id);
+            renderExperienceUI();
+            renderApp();
+        }
+
+        function updateExpField(id, field, value) {
+            const exp = state.experience.find(e => e.id === id);
+            if (exp) {
+                exp[field] = value;
+                renderApp();
+            }
+        }
+
+        function renderExperienceUI() {
+            const container = document.getElementById('experience-container');
+            container.innerHTML = state.experience.map(exp => `
+                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <input type="text" value="${escapeHtml(exp.role)}" oninput="updateExpField(${exp.id}, 'role', this.value)" class="bg-transparent text-xs font-bold text-slate-200 focus:outline-none border-b border-transparent focus:border-indigo-500 flex-1 mr-2">
+                        <button onclick="removeExperience(${exp.id})" class="text-slate-500 hover:text-rose-400 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" placeholder="Company" value="${escapeHtml(exp.company)}" oninput="updateExpField(${exp.id}, 'company', this.value)" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300">
+                        <input type="text" placeholder="Period" value="${escapeHtml(exp.period)}" oninput="updateExpField(${exp.id}, 'period', this.value)" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300">
+                    </div>
+                    <textarea rows="2" oninput="updateExpField(${exp.id}, 'desc', this.value)" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none">${escapeHtml(exp.desc)}</textarea>
+                </div>
+            `).join('');
+        }
+
+        // GitHub Wizard logic
+        function updateGHParam(key, val) {
+            if (key === 'user') state.github.username = val || 'alexrivera';
+            if (key === 'repo') state.github.repoName = val || 'my-portfolio';
+            updateGHGuideUI();
+        }
+
+        function setGHMethod(method) {
+            state.github.method = method;
+            const cliBtn = document.getElementById('gh-method-cli-btn');
+            const webBtn = document.getElementById('gh-method-web-btn');
+            const cliGuide = document.getElementById('gh-guide-cli');
+            const webGuide = document.getElementById('gh-guide-web');
+
+            if (method === 'cli') {
+                cliBtn.className = "p-4 rounded-xl border-2 border-indigo-500 bg-slate-900 text-left hover:border-indigo-400 transition";
+                webBtn.className = "p-4 rounded-xl border border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition";
+                cliGuide.classList.remove('hidden');
+                webGuide.classList.add('hidden');
+            } else {
+                webBtn.className = "p-4 rounded-xl border-2 border-indigo-500 bg-slate-900 text-left hover:border-indigo-400 transition";
+                cliBtn.className = "p-4 rounded-xl border border-slate-800 bg-slate-900 text-left hover:border-slate-700 transition";
+                webGuide.classList.remove('hidden');
+                cliGuide.classList.add('hidden');
+            }
+        }
+
+        function updateGHGuideUI() {
+            const user = state.github.username;
+            const repo = state.github.repoName;
+            const url = `https://${user}.github.io/${repo}/`;
+            const repoUrl = `https://github.com/${user}/${repo}`;
+
+            document.getElementById('gh-live-url').innerText = url;
+            document.getElementById('gh-live-url').href = url;
+            document.getElementById('gh-live-url-2').innerText = url;
+            document.getElementById('gh-live-url-2').href = url;
+            document.getElementById('gh-repo-url').innerText = `github.com/${user}/${repo}`;
+            document.getElementById('gh-repo-url').href = repoUrl;
+
+            document.querySelectorAll('.gh-user-display').forEach(el => el.innerText = user);
+            document.querySelectorAll('.gh-repo-display').forEach(el => el.innerText = repo);
+
+            document.getElementById('cmd-block-1').innerText = `git init\ngit add index.html\ngit commit -m "Initial deploy with GitStack"`;
+            document.getElementById('cmd-block-2').innerText = `git branch -M main\ngit remote add origin https://github.com/${user}/${repo}.git\ngit push -u origin main`;
+        }
+
+        // HTML Generator Code
+        function generateSiteHTML() {
+            const isDark = state.themeMode === 'dark';
+            const accent = colorHexMap[state.accentColor] || colorHexMap.indigo;
+            
+            const bgBg = isDark ? '#090d16' : '#f8fafc';
+            const cardBg = isDark ? '#111827' : '#ffffff';
+            const textColor = isDark ? '#f3f4f6' : '#0f172a';
+            const mutedText = isDark ? '#9ca3af' : '#64748b';
+            const borderColor = isDark ? '#1f2937' : '#e2e8f0';
+
+            // Select layout builder based on template
+            let contentBody = '';
+
+            if (state.template === 'portfolio') {
+                contentBody = `
+                <!-- Navigation -->
+                <nav class="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+                    <div class="font-extrabold text-xl tracking-tight flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full" style="background-color: ${accent.main};"></span>
+                        <span>${escapeHtml(state.profile.name)}</span>
+                    </div>
+                    <div class="flex items-center space-x-6 text-sm font-medium">
+                        <a href="#projects" class="hover:opacity-75 transition">Projects</a>
+                        <a href="#experience" class="hover:opacity-75 transition">Experience</a>
+                        <a href="mailto:${escapeHtml(state.profile.email)}" class="px-4 py-2 rounded-lg text-white font-semibold transition" style="background-color: ${accent.main};">Contact</a>
+                    </div>
+                </nav>
+
+                <!-- Hero Section -->
+                <section class="max-w-5xl mx-auto px-6 py-16 md:py-24 grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
+                    <div class="md:col-span-2 space-y-6">
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full border" style="color: ${accent.main}; border-color: ${accent.main}40; background-color: ${accent.main}15;">
+                            ${escapeHtml(state.profile.title)}
+                        </span>
+                        <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                            Building digital experiences with modern web tools.
+                        </h1>
+                        <p class="text-lg leading-relaxed" style="color: ${mutedText};">
+                            ${escapeHtml(state.profile.bio)}
+                        </p>
+                        <div class="pt-2 flex flex-wrap gap-2">
+                            ${state.skills.map(skill => `<span class="px-3 py-1 text-xs font-medium rounded-md border" style="background-color: ${cardBg}; border-color: ${borderColor};">${escapeHtml(skill)}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="flex justify-center">
+                        <div class="relative group">
+                            <div class="absolute -inset-1 rounded-2xl blur opacity-30 group-hover:opacity-100 transition duration-1000" style="background: linear-gradient(to right, ${accent.main}, #8b5cf6);"></div>
+                            <img src="${escapeHtml(state.profile.avatar)}" alt="${escapeHtml(state.profile.name)}" class="relative w-56 h-56 rounded-2xl object-cover shadow-2xl border-2" style="border-color: ${borderColor};">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Projects Section -->
+                <section id="projects" class="max-w-5xl mx-auto px-6 py-12">
+                    <h2 class="text-2xl font-bold mb-8 flex items-center space-x-2">
+                        <span>Featured Projects</span>
+                        <span class="h-px flex-1 ml-4" style="background-color: ${borderColor};"></span>
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        ${state.projects.map(proj => `
+                            <div class="rounded-2xl overflow-hidden border transition hover:-translate-y-1 hover:shadow-xl duration-300 flex flex-col" style="background-color: ${cardBg}; border-color: ${borderColor};">
+                                <img src="${escapeHtml(proj.imageUrl)}" alt="${escapeHtml(proj.title)}" class="w-full h-48 object-cover">
+                                <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+                                    <div>
+                                        <h3 class="text-xl font-bold mb-2">${escapeHtml(proj.title)}</h3>
+                                        <p class="text-sm leading-relaxed" style="color: ${mutedText};">${escapeHtml(proj.desc)}</p>
+                                    </div>
+                                    <div class="pt-4 border-t flex items-center justify-between" style="border-color: ${borderColor};">
+                                        <span class="text-xs font-mono" style="color: ${accent.main};">${escapeHtml(proj.tags)}</span>
+                                        <div class="flex space-x-3 text-sm">
+                                            <a href="${escapeHtml(proj.githubUrl)}" target="_blank" class="hover:opacity-75"><i class="fa-brands fa-github"></i></a>
+                                            <a href="${escapeHtml(proj.liveUrl)}" target="_blank" class="hover:opacity-75"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+
+                <!-- Experience Section -->
+                <section id="experience" class="max-w-5xl mx-auto px-6 py-12 mb-16">
+                    <h2 class="text-2xl font-bold mb-8 flex items-center space-x-2">
+                        <span>Career Timeline</span>
+                        <span class="h-px flex-1 ml-4" style="background-color: ${borderColor};"></span>
+                    </h2>
+                    <div class="space-y-6 border-l-2 pl-6" style="border-color: ${accent.main}40;">
+                        ${state.experience.map(exp => `
+                            <div class="relative">
+                                <span class="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full border-2" style="background-color: ${bgBg}; border-color: ${accent.main};"></span>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-1">
+                                    <h3 class="text-lg font-bold">${escapeHtml(exp.role)} <span style="color: ${accent.main};">@ ${escapeHtml(exp.company)}</span></h3>
+                                    <span class="text-xs font-mono" style="color: ${mutedText};">${escapeHtml(exp.period)}</span>
+                                </div>
+                                <p class="text-sm" style="color: ${mutedText};">${escapeHtml(exp.desc)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+                `;
+            } else if (state.template === 'resume') {
+                contentBody = `
+                <div class="max-w-4xl mx-auto px-6 py-12">
+                    <!-- Resume Header -->
+                    <div class="border-b pb-8 mb-8" style="border-color: ${borderColor};">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h1 class="text-4xl font-extrabold tracking-tight">${escapeHtml(state.profile.name)}</h1>
+                                <p class="text-lg font-medium mt-1" style="color: ${accent.main};">${escapeHtml(state.profile.title)}</p>
+                            </div>
+                            <div class="text-xs space-y-1 sm:text-right" style="color: ${mutedText};">
+                                <div><i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(state.profile.location)}</div>
+                                <div><i class="fa-solid fa-envelope mr-1"></i> ${escapeHtml(state.profile.email)}</div>
+                                <div><i class="fa-brands fa-github mr-1"></i> github.com/${escapeHtml(state.github.username)}</div>
+                            </div>
+                        </div>
+                        <p class="mt-6 text-sm leading-relaxed" style="color: ${mutedText};">${escapeHtml(state.profile.bio)}</p>
+                    </div>
+
+                    <!-- Grid Layout for Resume -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Main Column -->
+                        <div class="md:col-span-2 space-y-8">
+                            <section>
+                                <h2 class="text-sm font-bold uppercase tracking-widest mb-4 pb-1 border-b" style="border-color: ${accent.main}; color: ${accent.main};">Work Experience</h2>
+                                <div class="space-y-6">
+                                    ${state.experience.map(exp => `
+                                        <div>
+                                            <div class="flex justify-between items-baseline">
+                                                <h3 class="font-bold text-base">${escapeHtml(exp.role)}</h3>
+                                                <span class="text-xs font-mono" style="color: ${mutedText};">${escapeHtml(exp.period)}</span>
+                                            </div>
+                                            <div class="text-xs font-semibold mb-2" style="color: ${mutedText};">${escapeHtml(exp.company)}</div>
+                                            <p class="text-xs leading-relaxed" style="color: ${mutedText};">${escapeHtml(exp.desc)}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </section>
+
+                            <section>
+                                <h2 class="text-sm font-bold uppercase tracking-widest mb-4 pb-1 border-b" style="border-color: ${accent.main}; color: ${accent.main};">Key Projects</h2>
+                                <div class="space-y-4">
+                                    ${state.projects.map(p => `
+                                        <div>
+                                            <h3 class="font-bold text-sm flex items-center justify-between">
+                                                <span>${escapeHtml(p.title)}</span>
+                                                <span class="text-[10px] font-mono px-2 py-0.5 rounded" style="background-color: ${cardBg}; border: 1px solid ${borderColor};">${escapeHtml(p.tags)}</span>
+                                            </h3>
+                                            <p class="text-xs mt-1" style="color: ${mutedText};">${escapeHtml(p.desc)}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Sidebar Column -->
+                        <div class="space-y-8">
+                            <section>
+                                <h2 class="text-sm font-bold uppercase tracking-widest mb-4 pb-1 border-b" style="border-color: ${accent.main}; color: ${accent.main};">Core Skills</h2>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${state.skills.map(s => `<span class="px-2.5 py-1 text-xs font-medium rounded" style="background-color: ${cardBg}; border: 1px solid ${borderColor};">${escapeHtml(s)}</span>`).join('')}
+                                </div>
+                            </section>
+
+                            <section>
+                                <h2 class="text-sm font-bold uppercase tracking-widest mb-4 pb-1 border-b" style="border-color: ${accent.main}; color: ${accent.main};">Connect</h2>
+                                <div class="space-y-2 text-xs">
+                                    <a href="${escapeHtml(state.socials.linkedin)}" class="block hover:underline" style="color: ${mutedText};"><i class="fa-brands fa-linkedin w-5"></i> LinkedIn Profile</a>
+                                    <a href="https://github.com/${escapeHtml(state.socials.github)}" class="block hover:underline" style="color: ${mutedText};"><i class="fa-brands fa-github w-5"></i> GitHub Repositories</a>
+                                    <a href="${escapeHtml(state.socials.website)}" class="block hover:underline" style="color: ${mutedText};"><i class="fa-solid fa-globe w-5"></i> Portfolio Site</a>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+                `;
+            } else if (state.template === 'product') {
+                contentBody = `
+                <!-- Product Landing Hero -->
+                <nav class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+                    <div class="font-black text-2xl flex items-center space-x-2">
+                        <i class="fa-solid fa-rocket" style="color: ${accent.main};"></i>
+                        <span>${escapeHtml(state.profile.name.split(' ')[0])}App</span>
+                    </div>
+                    <a href="#cta" class="px-5 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg transition hover:opacity-90" style="background-color: ${accent.main};">Get Started Free</a>
+                </nav>
+
+                <section class="max-w-4xl mx-auto text-center px-6 py-20 space-y-6">
+                    <span class="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider" style="background-color: ${accent.main}20; color: ${accent.main};">
+                        Next Generation Platform
+                    </span>
+                    <h1 class="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
+                        ${escapeHtml(state.profile.title)}
+                    </h1>
+                    <p class="text-lg max-w-2xl mx-auto" style="color: ${mutedText};">
+                        ${escapeHtml(state.profile.bio)}
+                    </p>
+                    <div id="cta" class="pt-4 flex justify-center space-x-4">
+                        <a href="mailto:${escapeHtml(state.profile.email)}" class="px-8 py-4 rounded-xl text-white font-bold shadow-xl transition hover:scale-105" style="background-color: ${accent.main};">Launch Application</a>
+                        <a href="#features" class="px-8 py-4 rounded-xl font-bold border transition hover:opacity-80" style="border-color: ${borderColor};">Learn More</a>
+                    </div>
+                </section>
+
+                <section id="features" class="max-w-6xl mx-auto px-6 py-16">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        ${state.projects.map((p, idx) => `
+                            <div class="p-8 rounded-2xl border" style="background-color: ${cardBg}; border-color: ${borderColor};">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-bold mb-6" style="background-color: ${accent.main};">
+                                    ${idx + 1}
+                                </div>
+                                <h3 class="text-xl font-bold mb-2">${escapeHtml(p.title)}</h3>
+                                <p class="text-sm leading-relaxed" style="color: ${mutedText};">${escapeHtml(p.desc)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+                `;
+            } else if (state.template === 'tech') {
+                contentBody = `
+                <div class="max-w-4xl mx-auto px-6 py-12 font-mono">
+                    <!-- Terminal Window Header -->
+                    <div class="rounded-t-xl border p-3 flex items-center justify-between" style="background-color: ${cardBg}; border-color: ${borderColor};">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        </div>
+                        <span class="text-xs" style="color: ${mutedText};">${escapeHtml(state.profile.name.toLowerCase().replace(/\s+/g, '-'))}@developer:~</span>
+                        <div></div>
+                    </div>
+
+                    <!-- Terminal Body -->
+                    <div class="rounded-b-xl border border-t-0 p-6 space-y-8" style="background-color: ${isDark ? '#020617' : '#ffffff'}; border-color: ${borderColor};">
+                        
+                        <div>
+                            <span style="color: ${accent.main};">$ cat about_me.json</span>
+                            <div class="mt-2 p-4 rounded-lg border text-xs leading-relaxed" style="background-color: ${cardBg}; border-color: ${borderColor};">
+                                {<br>
+                                &nbsp;&nbsp;"name": "${escapeHtml(state.profile.name)}",<br>
+                                &nbsp;&nbsp;"role": "${escapeHtml(state.profile.title)}",<br>
+                                &nbsp;&nbsp;"location": "${escapeHtml(state.profile.location)}",<br>
+                                &nbsp;&nbsp;"bio": "${escapeHtml(state.profile.bio)}"<br>
+                                }
+                            </div>
+                        </div>
+
+                        <div>
+                            <span style="color: ${accent.main};">$ list-skills --verbose</span>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                ${state.skills.map(s => `<span class="px-2.5 py-1 text-xs border rounded" style="color: ${accent.main}; border-color: ${accent.main}40;">[${escapeHtml(s)}]</span>`).join('')}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span style="color: ${accent.main};">$ git log --projects --oneline</span>
+                            <div class="mt-3 space-y-4">
+                                ${state.projects.map(p => `
+                                    <div class="p-4 rounded-lg border text-xs space-y-2" style="background-color: ${cardBg}; border-color: ${borderColor};">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-sm" style="color: ${accent.main};">&gt; ${escapeHtml(p.title)}</span>
+                                            <span class="text-[10px]" style="color: ${mutedText};">${escapeHtml(p.tags)}</span>
+                                        </div>
+                                        <p style="color: ${mutedText};">${escapeHtml(p.desc)}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                `;
+            }
+
+            const fullDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(state.profile.name)} - ${escapeHtml(state.profile.title)}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: ${state.template === 'tech' ? "'Fira Code', monospace" : "'Inter', sans-serif"};
+            background-color: ${bgBg};
+            color: ${textColor};
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    ${contentBody}
+
+    <!-- Footer -->
+    <footer class="max-w-5xl mx-auto px-6 py-8 border-t text-center text-xs space-y-3" style="border-color: ${borderColor}; color: ${mutedText};">
+        <div class="flex justify-center space-x-4 text-base">
+            <a href="https://github.com/${escapeHtml(state.socials.github)}" target="_blank" class="hover:opacity-75"><i class="fa-brands fa-github"></i></a>
+            <a href="${escapeHtml(state.socials.linkedin)}" target="_blank" class="hover:opacity-75"><i class="fa-brands fa-linkedin"></i></a>
+            <a href="${escapeHtml(state.socials.website)}" target="_blank" class="hover:opacity-75"><i class="fa-solid fa-globe"></i></a>
+        </div>
+        <div>&copy; ${new Date().getFullYear()} ${escapeHtml(state.profile.name)}. Published with GitStack on GitHub Pages.</div>
+    </footer>
+</body>
+</html>`;
+
+            return fullDoc;
+        }
+
+        function renderApp() {
+            const html = generateSiteHTML();
+
+            // Update iframe preview
+            const iframe = document.getElementById('sitePreviewIframe');
+            iframe.srcdoc = html;
+
+            // Update code viewer block
+            const codeBlock = document.getElementById('codeViewerBlock');
+            if (codeBlock) {
+                codeBlock.textContent = html;
+            }
+        }
+
+        function copyGeneratedCode() {
+            const code = generateSiteHTML();
+            copyToClipboard(code);
+            showToast('Generated HTML code copied to clipboard!');
+        }
+
+        function copySnippet(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            copyToClipboard(text);
+            showToast('Git command copied to clipboard!');
+        }
+
+        function copyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function downloadCodeFile() {
+            const html = generateSiteHTML();
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('index.html downloaded successfully!');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            msgEl.innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        window.onload = function() {
+            renderSkillsUI();
+            renderProjectsUI();
+            renderExperienceUI();
+            updateGHGuideUI();
+            renderApp();
+        };
+    </script>
+</body>
+</html>
